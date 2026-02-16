@@ -15,6 +15,7 @@ import {
 	FieldSchema,
 	CommentSchema,
 	ListCommentsResponseSchema,
+	AirtableRecordSchema,
 	type FieldSet,
 } from './types.js';
 import {enhanceAirtableError} from './enhanceAirtableError.js';
@@ -84,7 +85,7 @@ export class AirtableService implements IAirtableService {
 			const response = await this.fetchFromAPI(
 				`/v0/${baseId}/${tableId}?${queryParams.toString()}`,
 				z.object({
-					records: z.array(z.object({id: z.string(), fields: z.record(z.string(), z.any())})),
+					records: z.array(AirtableRecordSchema),
 					offset: z.string().optional(),
 				}),
 			);
@@ -99,14 +100,14 @@ export class AirtableService implements IAirtableService {
 	async getRecord(baseId: string, tableId: string, recordId: string): Promise<AirtableRecord> {
 		return this.fetchFromAPI(
 			`/v0/${baseId}/${tableId}/${recordId}`,
-			z.object({id: z.string(), fields: z.record(z.string(), z.any())}),
+			AirtableRecordSchema,
 		);
 	}
 
 	async createRecord(baseId: string, tableId: string, fields: FieldSet): Promise<AirtableRecord> {
 		return this.fetchFromAPI(
 			`/v0/${baseId}/${tableId}`,
-			z.object({id: z.string(), fields: z.record(z.string(), z.any())}),
+			AirtableRecordSchema,
 			{
 				method: 'POST',
 				body: JSON.stringify({fields}),
@@ -121,7 +122,7 @@ export class AirtableService implements IAirtableService {
 	): Promise<AirtableRecord[]> {
 		const response = await this.fetchFromAPI(
 			`/v0/${baseId}/${tableId}`,
-			z.object({records: z.array(z.object({id: z.string(), fields: z.record(z.string(), z.any())}))}),
+			z.object({records: z.array(AirtableRecordSchema)}),
 			{
 				method: 'PATCH',
 				body: JSON.stringify({records}),
@@ -263,6 +264,27 @@ export class AirtableService implements IAirtableService {
 		return this.fetchFromAPI(endpoint, ListCommentsResponseSchema);
 	}
 
+	async uploadAttachment(
+		baseId: string,
+		recordId: string,
+		attachmentFieldIdOrName: string,
+		file: string,
+		filename: string,
+		contentType: string,
+	): Promise<AirtableRecord> {
+		const contentBaseUrl = 'https://content.airtable.com';
+		const endpoint = `/v0/${baseId}/${recordId}/${encodeURIComponent(attachmentFieldIdOrName)}/uploadAttachment`;
+		return this.fetchFromAPI(
+			endpoint,
+			AirtableRecordSchema,
+			{
+				method: 'POST',
+				body: JSON.stringify({contentType, file, filename}),
+			},
+			contentBaseUrl,
+		);
+	}
+
 	private async validateAndGetSearchFields(
 		baseId: string,
 		tableId: string,
@@ -305,8 +327,14 @@ export class AirtableService implements IAirtableService {
 		return searchableFields;
 	}
 
-	private async fetchFromAPI<T>(endpoint: string, schema: z.ZodType<T>, options: RequestInit = {}): Promise<T> {
-		const response = await this.fetch(`${this.baseUrl}${endpoint}`, {
+	private async fetchFromAPI<T>(
+		endpoint: string,
+		schema: z.ZodType<T>,
+		options: RequestInit = {},
+		baseUrl?: string,
+	): Promise<T> {
+		const url = (baseUrl ?? this.baseUrl) + endpoint;
+		const response = await this.fetch(url, {
 			...options,
 			headers: {
 				Authorization: `Bearer ${this.apiKey}`,
