@@ -28,8 +28,15 @@ WORKDIR /app
 
 # Copy the build files from the previous stage
 COPY --from=builder /app/dist /app/dist
-COPY --from=builder /app/package.json /app/package.json 
+COPY --from=builder /app/package.json /app/package.json
 COPY --from=builder /app/node_modules /app/node_modules
+
+# Configure HTTP transport
+ENV MCP_TRANSPORT=http
+ENV PORT=3000
+
+# Expose the HTTP port
+EXPOSE 3000
 
 # Set the entry point to run the server
 ENTRYPOINT ["node", "dist/main.js"]
