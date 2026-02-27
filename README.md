@@ -1,5 +1,31 @@
 # airtable-mcp-server
 
+## Blumen Deployment
+
+This repo is used as a lightweight MCP service in our Kubernetes dev cluster. It is exposed via an ingress on an HTTPS port and is accessible on our Tailnet as an HTTPS server.
+
+The service runs from the image tagged `dev` in our GCR artifact registry:
+
+```
+gcr.io/blumen-378818/airtable-mcp:dev
+```
+
+### Making Changes
+
+1. Clone the repo
+2. Build the image locally for the correct platform:
+   ```bash
+   docker build --platform linux/amd64 -t gcr.io/blumen-378818/airtable-mcp:dev .
+   ```
+3. Push the image to the registry:
+   ```bash
+   docker push gcr.io/blumen-378818/airtable-mcp:dev
+   ```
+
+> **Note:** You need Artifact Registry upload (GCS) permissions to perform the push operation.
+
+---
+
 A Model Context Protocol server that provides read and write access to Airtable databases. This server enables LLMs to inspect database schemas, then read and write records.
 
 https://github.com/user-attachments/assets/c8285e76-d0ed-4018-94c7-20535db6c944
